@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(dotenv_path="env")
 
 def upload_to_s3(file_path: str, s3_key: str):
     # Initialize the S3 client using environment variables
