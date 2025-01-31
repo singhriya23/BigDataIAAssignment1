@@ -1,0 +1,16 @@
+boto3
+pymupdf
+BeautifulSoup4
+requests
+docling
+pytesseract
+
+Pillow
+numpy
+pandas
+fastapi
+uvicorn
+python-multipart
+python-dotenv
+lxml
+urllib3
