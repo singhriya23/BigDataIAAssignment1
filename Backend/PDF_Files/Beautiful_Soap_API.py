@@ -7,6 +7,10 @@ import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 from urllib.parse import urlparse
 import logging
+from dotenv import load_dotenv  # ✅ Import dotenv
+
+# ✅ Load environment variables from .env file
+load_dotenv("env")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -14,12 +18,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# AWS S3 Configuration
-S3_BUCKET_NAME = "document-parsed-files"
+# ✅ AWS S3 Configuration from .env
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files")
 S3_WEBPAGES_OBJECT = "Webpages"
 
-# Initialize S3 client
-s3_client = boto3.client('s3')
+# ✅ Initialize S3 client with credentials from .env
+s3_client = boto3.client(
+    "s3",
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.getenv("AWS_REGION"),
+)
 
 def download_pdf(pdf_url, output_path):
     try:
@@ -58,22 +67,14 @@ def pdf_to_markdown(pdf_path, folder_name):
                 os.makedirs(os.path.dirname(image_path), exist_ok=True)
                 with open(image_path, "wb") as img_file:
                     img_file.write(image_bytes)
+
+                # ✅ Reload .env before S3 upload
+                load_dotenv()
+
                 s3_image_key = f"{S3_WEBPAGES_OBJECT}/{folder_name}/images/{image_name}"
                 upload_to_s3(image_path, s3_image_key)
                 os.remove(image_path)
                 image_count += 1
-
-            # Extract tables (placeholder)
-            tables = []  # Placeholder for extracted tables
-            for table_index, table in enumerate(tables):
-                table_name = f"table_{page_num + 1}_{table_index + 1}.csv"
-                table_path = os.path.join("tables", table_name)
-                os.makedirs(os.path.dirname(table_path), exist_ok=True)
-                table.to_csv(table_path, index=False)
-                s3_table_key = f"{S3_WEBPAGES_OBJECT}/{folder_name}/tables/{table_name}"
-                upload_to_s3(table_path, s3_table_key)
-                os.remove(table_path)
-                table_count += 1
 
         return markdown_content, image_count, table_count
     except Exception as e:
@@ -83,6 +84,10 @@ def pdf_to_markdown(pdf_path, folder_name):
 def upload_to_s3(file_path, s3_key):
     try:
         logger.info(f"Uploading {file_path} to S3 with key {s3_key}")
+
+        # ✅ Reload .env before S3 upload
+        load_dotenv()
+
         s3_client.upload_file(file_path, S3_BUCKET_NAME, s3_key)
         logger.info(f"Uploaded {file_path} to S3 bucket {S3_BUCKET_NAME} with key {s3_key}")
     except FileNotFoundError:
@@ -111,13 +116,17 @@ async def convert_pdf_to_markdown(pdf_url: str):
         
         # Convert the PDF to Markdown and extract images/tables
         markdown_content, image_count, table_count = pdf_to_markdown(pdf_path, folder_name)
-        
+
         # Save the Markdown file to S3
         markdown_name = f"{folder_name}.md"
         markdown_path = os.path.join("markdown", markdown_name)
         os.makedirs(os.path.dirname(markdown_path), exist_ok=True)
         with open(markdown_path, "w") as md_file:
             md_file.write(markdown_content)
+
+        # ✅ Reload .env before S3 upload
+        load_dotenv()
+
         s3_markdown_key = f"{S3_WEBPAGES_OBJECT}/{folder_name}/{markdown_name}"
         upload_to_s3(markdown_path, s3_markdown_key)
         os.remove(markdown_path)
@@ -132,4 +141,4 @@ async def convert_pdf_to_markdown(pdf_url: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # To run the FastAPI app, use the following command:
-# uvicorn your_script_name:app --reload
+# uvicorn script_name:app --reload

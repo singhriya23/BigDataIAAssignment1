@@ -5,14 +5,13 @@ from PIL import Image
 import os
 import boto3
 from botocore.exceptions import NoCredentialsError
+from dotenv import load_dotenv  # ✅ Import dotenv
 
-# Set the correct path to the Tesseract executable
-pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/bin/tesseract'
+# ✅ Load environment variables from .env file
+load_dotenv("env")
 
-# AWS S3 Configuration
-S3_BUCKET_NAME = "document-parsed-files"
-S3_PDF_OBJECT = "PDF_Files"
-s3_client = boto3.client("s3")  # Ensure AWS credentials are configured
+# Set the correct path to the Tesseract executable (if required)
+pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "/opt/homebrew/bin/tesseract")
 
 app = FastAPI()
 
@@ -20,7 +19,19 @@ app = FastAPI()
 async def root():
     return {"message": "Welcome to the PDF Extraction API!"}
 
-def extract_text_with_ocr(pdf_path, image_folder, table_folder):
+# ✅ AWS S3 Configuration from .env
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files")
+S3_PDF_OBJECT = "PDF_Files"
+
+# ✅ Initialize S3 client with credentials from .env
+s3_client = boto3.client(
+    "s3",
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.getenv("AWS_REGION"),
+)
+
+def extract_text_with_ocr(pdf_path, image_folder):
     """
     Extracts text from a PDF using OCR, saves images, and returns text in Markdown format.
     """
@@ -28,7 +39,6 @@ def extract_text_with_ocr(pdf_path, image_folder, table_folder):
 
     # Ensure directories exist
     os.makedirs(image_folder, exist_ok=True)
-    os.makedirs(table_folder, exist_ok=True)
 
     with pdfplumber.open(pdf_path) as pdf:
         for page_number, page in enumerate(pdf.pages, start=1):
@@ -43,7 +53,10 @@ def extract_text_with_ocr(pdf_path, image_folder, table_folder):
             # Save image locally before uploading to S3
             image_filename = f"page_{page_number}.png"
             image_path = os.path.join(image_folder, image_filename)
-            page_image.save(image_path)  # <-- Fixed by ensuring folder exists
+            page_image.save(image_path)
+
+            # ✅ Reload .env before S3 upload
+            load_dotenv()
 
             # Upload image to S3
             s3_image_path = f"{image_folder}/{image_filename}"
@@ -59,16 +72,17 @@ async def extract_ocr(file: UploadFile = File(...)):
     """
     API endpoint to receive a PDF file, process it using OCR, and store results in S3.
     """
+    # ✅ Reload environment variables before S3 operation
+    load_dotenv()
+
     pdf_name = os.path.splitext(file.filename)[0]
     pdf_s3_folder = f"{S3_PDF_OBJECT}/{pdf_name}/"
     
     # Create local temp paths
     temp_pdf_path = f"/tmp/{file.filename}"
     image_folder = f"/tmp/{pdf_name}_Images"
-    table_folder = f"/tmp/{pdf_name}_Tables"
 
     os.makedirs(image_folder, exist_ok=True)
-    os.makedirs(table_folder, exist_ok=True)
 
     with open(temp_pdf_path, "wb") as buffer:
         buffer.write(file.file.read())
@@ -80,12 +94,15 @@ async def extract_ocr(file: UploadFile = File(...)):
         return {"error": "AWS credentials not found. Please configure them properly."}
 
     # Extract OCR text
-    ocr_text = extract_text_with_ocr(temp_pdf_path, image_folder, table_folder)
+    ocr_text = extract_text_with_ocr(temp_pdf_path, image_folder)
 
     # Save OCR text as Markdown file
     output_markdown_file = f"/tmp/{pdf_name}_Extracted_Content.md"
     with open(output_markdown_file, "w", encoding="utf-8") as md_file:
         md_file.write(ocr_text)
+
+    # ✅ Reload .env before S3 upload
+    load_dotenv()
 
     # Upload Markdown file to S3
     s3_markdown_path = f"{pdf_s3_folder}Extracted_Content.md"

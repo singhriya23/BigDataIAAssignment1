@@ -5,6 +5,10 @@ import csv
 import shutil
 import boto3
 from botocore.exceptions import NoCredentialsError
+from dotenv import load_dotenv  # ✅ Import dotenv
+
+# ✅ Load environment variables from .env file
+load_dotenv("env")
 
 app = FastAPI()
 
@@ -12,11 +16,17 @@ app = FastAPI()
 async def root():
     return {"message": "Welcome to the PDF Extraction API!"}
 
-
-# AWS S3 Configuration
-S3_BUCKET_NAME = "document-parsed-files"
+# ✅ AWS S3 Configuration from .env
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files")  
 S3_PDF_OBJECT = "PDF_Files"
-s3_client = boto3.client("s3")  # Make sure AWS credentials are configured
+
+# ✅ Initialize S3 client with credentials from .env
+s3_client = boto3.client(
+    "s3",
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.getenv("AWS_REGION"),
+)
 
 @app.post("/extract-pdf/")
 async def extract_pdf(file: UploadFile = File(...)):
@@ -24,6 +34,9 @@ async def extract_pdf(file: UploadFile = File(...)):
     API endpoint to upload a PDF, extract text, tables, and images, 
     and store everything in an S3 bucket.
     """
+    # ✅ Reload environment variables before S3 operation
+    load_dotenv()
+
     pdf_name = os.path.splitext(file.filename)[0]
     pdf_s3_folder = f"{S3_PDF_OBJECT}/{pdf_name}/"
 
@@ -75,6 +88,9 @@ async def extract_pdf(file: UploadFile = File(...)):
                         for row in table.extract():
                             csv_writer.writerow(row)
 
+                    # ✅ Reload .env before S3 upload
+                    load_dotenv()
+                    
                     # Upload table file to S3
                     s3_table_path = f"{pdf_s3_folder}Tables/{table_filename}"
                     s3_client.upload_file(table_filepath, S3_BUCKET_NAME, s3_table_path)
@@ -100,6 +116,9 @@ async def extract_pdf(file: UploadFile = File(...)):
                     with open(img_path, "wb") as img_file:
                         img_file.write(img_bytes)
 
+                    # ✅ Reload .env before S3 upload
+                    load_dotenv()
+
                     # Upload image to S3
                     s3_image_path = f"{pdf_s3_folder}Images/{img_filename}"
                     s3_client.upload_file(img_path, S3_BUCKET_NAME, s3_image_path)
@@ -113,6 +132,9 @@ async def extract_pdf(file: UploadFile = File(...)):
 
     # Close the PDF document
     pdf_document.close()
+
+    # ✅ Reload .env before S3 upload
+    load_dotenv()
 
     # Upload the extracted Markdown file to S3
     s3_markdown_path = f"{pdf_s3_folder}Extracted_Content.md"

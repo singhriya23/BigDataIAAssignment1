@@ -2,13 +2,14 @@ from fastapi import FastAPI, UploadFile, File
 import fitz  # PyMuPDF
 from io import BytesIO
 from pathlib import Path
+import os
 from datetime import datetime
 from test_S3 import upload_to_s3  # Importing the S3 upload function from test_S3.py
 
 app = FastAPI()
 
 # Ensure the directory exists
-BASE_DIR = Path("/Users/kaushikj/Documents/DSA-PYTHON")
+BASE_DIR = Path(os.getcwd())
 BASE_DIR.mkdir(parents=True, exist_ok=True)  # Ensures the directory exists
 
 @app.get("/")

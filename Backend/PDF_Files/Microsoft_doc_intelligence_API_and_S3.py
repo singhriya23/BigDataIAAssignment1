@@ -2,40 +2,54 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import PlainTextResponse
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
-from config import API_KEY, ENDPOINT  # Import from config.py
 import boto3
-from botocore.exceptions import NoCredentialsError
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 import os
 import csv
+from dotenv import load_dotenv  # ✅ Import dotenv
+
+# ✅ Load environment variables from .env file
+load_dotenv("env")
 
 # Initialize the FastAPI app
 app = FastAPI()
-
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to the PDF Extraction API!"}
 
-# Initialize the Form Recognizer client
+# ✅ Load Azure Form Recognizer credentials from .env
+AZURE_API_KEY = os.getenv("AZURE_API_KEY")
+AZURE_ENDPOINT = os.getenv("AZURE_ENDPOINT")
+
+if not AZURE_API_KEY or not AZURE_ENDPOINT:
+    raise ValueError("Azure credentials missing! Please check your .env file.")
+
+# ✅ Initialize the Form Recognizer client
 client = DocumentAnalysisClient(
-    endpoint=ENDPOINT,
-    credential=AzureKeyCredential(API_KEY)
+    endpoint=AZURE_ENDPOINT,
+    credential=AzureKeyCredential(AZURE_API_KEY)
 )
 
-# Initialize the S3 client
-s3_client = boto3.client('s3')
-S3_BUCKET_NAME = "document-parsed-files"
+# ✅ Load AWS S3 credentials from .env
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files")
 S3_PDF_FILES_OBJECT = "PDF_Files"
+
+# ✅ Initialize the S3 client with credentials
+s3_client = boto3.client(
+    "s3",
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.getenv("AWS_REGION"),
+)
 
 def convert_to_markdown(extracted_text, page_number):
     """
     Convert extracted text to markdown format, organizing it page by page.
     """
     markdown_text = f"## Page {page_number}\n\n"  # Add a header for each page
-
     for line in extracted_text:
         markdown_text += f"{line}\n"  # Add each line of the page to the markdown file
-    
     return markdown_text
 
 def upload_to_s3(file_path, s3_key):
@@ -43,12 +57,15 @@ def upload_to_s3(file_path, s3_key):
     Uploads a file to the specified S3 bucket.
     """
     try:
+        # ✅ Reload .env before S3 upload
+        load_dotenv()
+
         s3_client.upload_file(file_path, S3_BUCKET_NAME, s3_key)
         print(f"Uploaded {file_path} to S3 bucket {S3_BUCKET_NAME} with key {s3_key}")
     except FileNotFoundError:
         print(f"The file {file_path} was not found.")
-    except NoCredentialsError:
-        print("Credentials not available for S3 upload.")
+    except (NoCredentialsError, PartialCredentialsError):
+        print("AWS credentials not available! Please check your .env file.")
     except Exception as e:
         print(f"Error uploading to S3: {e}")
 
@@ -90,6 +107,9 @@ async def extract_text(file: UploadFile = File(...)):
         with open(markdown_path, "w", encoding="utf-8") as file:
             file.write(full_markdown_content)
 
+        # ✅ Reload .env before S3 upload
+        load_dotenv()
+
         # Upload the markdown file to S3
         s3_markdown_key = f"{s3_base_folder}{markdown_path}"
         upload_to_s3(markdown_path, s3_markdown_key)
@@ -123,6 +143,10 @@ async def extract_text(file: UploadFile = File(...)):
             with open(table_path, "w", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerows(table_data)
+            
+            # ✅ Reload .env before S3 upload
+            load_dotenv()
+
             s3_table_key = f"{s3_tables_folder}{table_path}"
             upload_to_s3(table_path, s3_table_key)
             os.remove(table_path)
@@ -137,4 +161,4 @@ async def extract_text(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Error processing the PDF: {str(e)}")
 
 # To run the FastAPI app, use the following command:
-# uvicorn your_script_name:app --reload
+# uvicorn script_name:app --reload
