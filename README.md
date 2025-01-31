@@ -15,3 +15,5 @@ CONTRIBUTION
 KAUSHIK - BACKEND DIAGRAMS 33%
 RIYA - DEPLOYMENT POCS 33%
 ARVIND - FRONTEND(STREAMLIT) AND FRONTEND BACKEND INTEGRATION, DOCUMENTATION.
+
+We have used Pymupdf and Pytesseract to extract data from PDF as text, images and tables which can be seen in the diagram below
