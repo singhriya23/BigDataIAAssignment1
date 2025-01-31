@@ -16,6 +16,10 @@ s3_client = boto3.client("s3")  # Ensure AWS credentials are configured
 
 app = FastAPI()
 
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the PDF Extraction API!"}
+
 def extract_text_with_ocr(pdf_path, image_folder, table_folder):
     """
     Extracts text from a PDF using OCR, saves images, and returns text in Markdown format.

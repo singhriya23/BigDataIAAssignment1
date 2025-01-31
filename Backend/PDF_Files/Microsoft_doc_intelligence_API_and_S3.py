@@ -11,6 +11,11 @@ import csv
 # Initialize the FastAPI app
 app = FastAPI()
 
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the PDF Extraction API!"}
+
 # Initialize the Form Recognizer client
 client = DocumentAnalysisClient(
     endpoint=ENDPOINT,

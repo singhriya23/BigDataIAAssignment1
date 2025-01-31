@@ -8,6 +8,11 @@ from botocore.exceptions import NoCredentialsError
 
 app = FastAPI()
 
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the PDF Extraction API!"}
+
+
 # AWS S3 Configuration
 S3_BUCKET_NAME = "document-parsed-files"
 S3_PDF_OBJECT = "PDF_Files"

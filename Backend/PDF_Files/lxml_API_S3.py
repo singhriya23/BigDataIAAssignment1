@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the PDF Extraction API!"}
+
 # AWS S3 Configuration
 S3_BUCKET_NAME = "document-parsed-files"
 S3_WEBPAGES_OBJECT = "Webpages"
