@@ -6,36 +6,27 @@ import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 import os
 import csv
-from dotenv import load_dotenv  # ✅ Import dotenv
+from dotenv import load_dotenv 
 
-# ✅ Load environment variables from .env file
+
 load_dotenv("env")
 
-# Initialize the FastAPI app
+
 app = FastAPI()
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to the PDF Extraction API!"}
-
-# ✅ Load Azure Form Recognizer credentials from .env
 AZURE_API_KEY = os.getenv("API_KEY")
 AZURE_ENDPOINT = os.getenv("ENDPOINT")
-
 if not AZURE_API_KEY or not AZURE_ENDPOINT:
     raise ValueError("Azure credentials missing! Please check your .env file.")
-
-# ✅ Initialize the Form Recognizer client
 client = DocumentAnalysisClient(
     endpoint=AZURE_ENDPOINT,
     credential=AzureKeyCredential(AZURE_API_KEY)
 )
-
-# ✅ Load AWS S3 credentials from .env
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files")
 S3_PDF_FILES_OBJECT = "PDF_Files"
-
-# ✅ Initialize the S3 client with credentials
 s3_client = boto3.client(
     "s3",
     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
@@ -44,22 +35,15 @@ s3_client = boto3.client(
 )
 
 def convert_to_markdown(extracted_text, page_number):
-    """
-    Convert extracted text to markdown format, organizing it page by page.
-    """
-    markdown_text = f"## Page {page_number}\n\n"  # Add a header for each page
+    markdown_text = f"## Page {page_number}\n\n"  
     for line in extracted_text:
-        markdown_text += f"{line}\n"  # Add each line of the page to the markdown file
+        markdown_text += f"{line}\n"  
     return markdown_text
 
 def upload_to_s3(file_path, s3_key):
-    """
-    Uploads a file to the specified S3 bucket.
-    """
+    
     try:
-        # ✅ Reload .env before S3 upload
         load_dotenv()
-
         s3_client.upload_file(file_path, S3_BUCKET_NAME, s3_key)
         print(f"Uploaded {file_path} to S3 bucket {S3_BUCKET_NAME} with key {s3_key}")
     except FileNotFoundError:
@@ -71,17 +55,11 @@ def upload_to_s3(file_path, s3_key):
 
 @app.post("/extract-text/", response_class=PlainTextResponse)
 async def extract_text(file: UploadFile = File(...)):
-    """
-    API endpoint to upload a PDF file, extract text using Azure Document Intelligence,
-    and save the content in Markdown format, along with images and tables, to S3.
-    """
+
     try:
-        # Save the uploaded file temporarily
         temp_pdf_path = f"temp_{file.filename}"
         with open(temp_pdf_path, "wb") as buffer:
             buffer.write(await file.read())
-
-        # Analyze the PDF using Azure Document Intelligence
         with open(temp_pdf_path, "rb") as file_buffer:
             poller = client.begin_analyze_document(
                 model_id="prebuilt-document",
@@ -89,36 +67,28 @@ async def extract_text(file: UploadFile = File(...)):
             )
             result = poller.result()
 
-        # Create a folder structure in S3 based on the PDF name
-        pdf_name = os.path.splitext(file.filename)[0]  # Remove the .pdf extension
-        s3_base_folder = f"{S3_PDF_FILES_OBJECT}/{pdf_name}/"  # Folder structure within the PDF_Files object
+      
+        pdf_name = os.path.splitext(file.filename)[0]  
+        s3_base_folder = f"{S3_PDF_FILES_OBJECT}/{pdf_name}/"  
 
-        # Initialize a list to hold all pages' markdown content
-        full_markdown_content = "# Extracted Content\n\n"  # Start the markdown file with a title
+       
+        full_markdown_content = "# Extracted Content\n\n" 
 
-        # Extract text page by page
+
         for page_number, page in enumerate(result.pages, start=1):
-            extracted_text = [line.content for line in page.lines]  # Extract text for the page
-            page_markdown = convert_to_markdown(extracted_text, page_number)  # Convert the page's text to markdown
-            full_markdown_content += page_markdown + "\n\n"  # Add the page's content to the full markdown
-
-        # Save the markdown content to a local file
+            extracted_text = [line.content for line in page.lines]  
+            page_markdown = convert_to_markdown(extracted_text, page_number)  
+            full_markdown_content += page_markdown + "\n\n" 
         markdown_path = f"{pdf_name}.md"
         with open(markdown_path, "w", encoding="utf-8") as file:
-            file.write(full_markdown_content)
-
-        # ✅ Reload .env before S3 upload
-        load_dotenv()
-
-        # Upload the markdown file to S3
+            file.write(full_markdown_content)     
+        load_dotenv()        
         s3_markdown_key = f"{s3_base_folder}{markdown_path}"
         upload_to_s3(markdown_path, s3_markdown_key)
 
-        # Extract and save images (if any)
         s3_images_folder = f"{s3_base_folder}images/"
         for page_number, page in enumerate(result.pages, start=1):
             for image_region in page.selection_marks:
-                # Save image metadata (Document Intelligence does not extract actual images)
                 image_metadata = {
                     "bounding_box": image_region.bounding_box,
                     "confidence": image_region.confidence
@@ -130,7 +100,6 @@ async def extract_text(file: UploadFile = File(...)):
                 upload_to_s3(image_metadata_path, s3_image_key)
                 os.remove(image_metadata_path)
 
-        # Extract and save tables (if any)
         s3_tables_folder = f"{s3_base_folder}tables/"
         for table_idx, table in enumerate(result.tables, start=1):
             table_data = []
@@ -144,21 +113,16 @@ async def extract_text(file: UploadFile = File(...)):
                 writer = csv.writer(file)
                 writer.writerows(table_data)
             
-            # ✅ Reload .env before S3 upload
+        
             load_dotenv()
 
             s3_table_key = f"{s3_tables_folder}{table_path}"
             upload_to_s3(table_path, s3_table_key)
-            os.remove(table_path)
-
-        # Clean up temporary files
+            os.remove(table_path)      
         os.remove(temp_pdf_path)
         os.remove(markdown_path)
-
         return f"Processing successful! Files saved to S3 under '{s3_base_folder}'."
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing the PDF: {str(e)}")
 
-# To run the FastAPI app, use the following command:
-# uvicorn script_name:app --reload
+
