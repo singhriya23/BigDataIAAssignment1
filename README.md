@@ -6,6 +6,8 @@ Frontend -- Contains the Streamlit code used for Frontend.
 
 Python Parsers -- Contains the POCs we have developed for the same.
 
+Codelabs Link: https://codelabs-preview.appspot.com/?file_id=1i3SX7f9MV_4QOnY8MV32oV3I9o9Yk8MtxNx7H6rayNk#2
+
 
 ATTESTATION
 WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENT'S WORK IN OUR
