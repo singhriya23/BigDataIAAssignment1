@@ -19,8 +19,8 @@ async def root():
     return {"message": "Welcome to the PDF Extraction API!"}
 
 # ✅ Load Azure Form Recognizer credentials from .env
-AZURE_API_KEY = os.getenv("AZURE_API_KEY")
-AZURE_ENDPOINT = os.getenv("AZURE_ENDPOINT")
+AZURE_API_KEY = os.getenv("API_KEY")
+AZURE_ENDPOINT = os.getenv("ENDPOINT")
 
 if not AZURE_API_KEY or not AZURE_ENDPOINT:
     raise ValueError("Azure credentials missing! Please check your .env file.")

@@ -2,3 +2,5 @@ AWS_ACCESS_KEY_ID=AKIAQLVQQVOH23EGEIUA
 AWS_SECRET_ACCESS_KEY=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
 AWS_REGION=us-east-2
 S3_BUCKET_NAME=document-parsed-files
+API_KEY = "3mnkeAB0O6mL0Lbah6ASkTKmyqCFAm925erF0vIC80PKkcKDX4L9JQQJ99BAACYeBjFXJ3w3AAALACOG73r0"  # Replace with your actual API key
+ENDPOINT = "https://accesskey.cognitiveservices.azure.com/"  # Replace with your actual endpoint
