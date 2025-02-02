@@ -36,7 +36,9 @@ dropdown = st.sidebar.selectbox("Select the API endpoint", [
     "BeautifulSoup",
     "Extract LXML",
     "MS Docs",
-    "PyTesseract"
+    "PyTesseract",
+    "Docling",
+    "MarkItDown"
 ])
 
 if dropdown == "PyMuPDF":
@@ -446,3 +448,130 @@ elif dropdown == "PyTesseract":
 
         else:
             st.error("❌ Failed to extract text from the image.")
+
+elif dropdown == "Docling":
+    st.sidebar.write("Upload a document:")
+    uploaded_file = st.sidebar.file_uploader("Choose a document", type=["pdf", "docx", "txt"], key="docling_uploader")
+
+    if uploaded_file is not None:
+        files = {"file": uploaded_file.getvalue()}  
+        response = requests.post(f"{BASE_API_URL}/convert_to_docling_markdown/", files=files)
+
+        if response.status_code == 200:
+            data = response.json()
+            st.write("### Extracted Markdown Content")
+            markdown_file_path = data.get("markdown_file", "")
+
+            if markdown_file_path:
+                st.write(f"**Markdown File Path:** {markdown_file_path}")
+                st.success("Document converted to Markdown successfully!")
+
+                # Extract filename (without extension) for S3 folder retrieval
+                file_name = os.path.splitext(uploaded_file.name)[0]  
+
+                st.write(f"📂 **Processing Folder in S3:** `{S3_BUCKET_NAME}/{S3_PDF_OBJECT}/{file_name}/`")  
+
+                # Generate S3 Download URL for the folder
+                if st.button("Download Full Processed Folder"):
+                    folder_prefix = f"{S3_PDF_OBJECT}/{file_name}/"
+                    
+                    try:
+                        # List all objects inside the folder
+                        objects = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=folder_prefix)
+
+                        if "Contents" not in objects:
+                            st.error("❌ No files found in S3. Check if the folder exists.")
+                        else:
+                            zip_file_name = f"{file_name}.zip"
+                            local_zip_path = f"./{zip_file_name}"
+
+                            # Download all files and zip them locally
+                            import zipfile
+                            with zipfile.ZipFile(local_zip_path, "w") as zipf:
+                                for obj in objects["Contents"]:
+                                    key = obj["Key"]
+                                    file_name_in_s3 = key.split("/")[-1]
+                                    local_file_path = f"./{file_name_in_s3}"
+
+                                    # Download each file
+                                    s3_client.download_file(S3_BUCKET_NAME, key, local_file_path)
+                                    zipf.write(local_file_path, arcname=file_name_in_s3)
+                                    os.remove(local_file_path)  # Cleanup downloaded files
+
+                            st.success(f"✅ Folder '{file_name}' downloaded successfully!")
+
+                            # Offer the ZIP file for download
+                            with open(local_zip_path, "rb") as f:
+                                st.download_button(label="Download Folder as ZIP", data=f, file_name=zip_file_name)
+
+                            os.remove(local_zip_path)  # Cleanup ZIP after download
+
+                    except Exception as e:
+                        st.error(f"❌ Failed to download from S3: {str(e)}")
+
+        else:
+            st.error("❌ Failed to process the document. Please try again.")
+
+elif dropdown == "MarkItDown":
+    st.sidebar.write("Upload a document:")
+    uploaded_file = st.sidebar.file_uploader("Choose a document", type=["pdf", "docx", "txt"], key="markitdown_uploader")
+
+    if uploaded_file is not None:
+        files = {"file": uploaded_file.getvalue()}  
+        response = requests.post(f"{BASE_API_URL}/convert_to_markdown/", files=files)
+
+        if response.status_code == 200:
+            data = response.json()
+            st.write("### Extracted Markdown Content")
+            markdown_file_path = data.get("s3_markdown_file", "")
+
+            if markdown_file_path:
+                st.write(f"**Markdown File Path:** {markdown_file_path}")
+                st.success("Document converted to Markdown successfully!")
+
+                # Extract filename (without extension) for S3 folder retrieval
+                file_name = os.path.splitext(uploaded_file.name)[0]  
+
+                st.write(f"📂 **Processing Folder in S3:** `{S3_BUCKET_NAME}/{S3_PDF_OBJECT}/{file_name}/`")  
+
+                # Generate S3 Download URL for the folder
+                if st.button("Download Full Processed Folder"):
+                    folder_prefix = f"{S3_PDF_OBJECT}/{file_name}/"
+                    
+                    try:
+                        # List all objects inside the folder
+                        objects = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=folder_prefix)
+
+                        if "Contents" not in objects:
+                            st.error("❌ No files found in S3. Check if the folder exists.")
+                        else:
+                            zip_file_name = f"{file_name}.zip"
+                            local_zip_path = f"./{zip_file_name}"
+
+                            # Download all files and zip them locally
+                            import zipfile
+                            with zipfile.ZipFile(local_zip_path, "w") as zipf:
+                                for obj in objects["Contents"]:
+                                    key = obj["Key"]
+                                    file_name_in_s3 = key.split("/")[-1]
+                                    local_file_path = f"./{file_name_in_s3}"
+
+                                    # Download each file
+                                    s3_client.download_file(S3_BUCKET_NAME, key, local_file_path)
+                                    zipf.write(local_file_path, arcname=file_name_in_s3)
+                                    os.remove(local_file_path)  # Cleanup downloaded files
+
+                            st.success(f"✅ Folder '{file_name}' downloaded successfully!")
+
+                            # Offer the ZIP file for download
+                            with open(local_zip_path, "rb") as f:
+                                st.download_button(label="Download Folder as ZIP", data=f, file_name=zip_file_name)
+
+                            os.remove(local_zip_path)  # Cleanup ZIP after download
+
+                    except Exception as e:
+                        st.error(f"❌ Failed to download from S3: {str(e)}")
+
+        else:
+            st.error("❌ Failed to process the document. Please try again.")
+

@@ -8,6 +8,23 @@ from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 from urllib.parse import urlparse
 import logging
 from dotenv import load_dotenv  # ✅ Import dotenv
+import uuid
+from datetime import datetime
+
+def get_folder_name_from_url(pdf_url):
+    """
+    Generate a unique folder name based on the original file name, timestamp, and UUID.
+    This ensures that each upload is stored in a separate folder, even if the file name is the same.
+    """
+    parsed_url = urlparse(pdf_url)
+    base_name = os.path.splitext(os.path.basename(parsed_url.path))[0]
+
+    # ✅ Add timestamp and UUID to prevent overwriting previous uploads
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    unique_id = uuid.uuid4().hex[:8]  # Use only first 8 characters for brevity
+    unique_folder_name = f"{base_name}_{timestamp}_{unique_id}"
+    
+    return unique_folder_name
 
 # ✅ Load environment variables from .env file
 load_dotenv("env")
@@ -107,31 +124,29 @@ async def convert_pdf_to_markdown(pdf_url: str):
     pdf_path = "downloaded.pdf"
     
     try:
-        # Download the PDF
+        # ✅ Download the PDF
         download_pdf(pdf_url, pdf_path)
         
-        # Get folder name from PDF URL
+        # ✅ Get a unique folder name to avoid overwriting previous files
         folder_name = get_folder_name_from_url(pdf_url)
-        logger.info(f"Folder name: {folder_name}")
+        logger.info(f"Unique folder name: {folder_name}")
         
-        # Convert the PDF to Markdown and extract images/tables
+        # ✅ Convert the PDF to Markdown and extract images/tables
         markdown_content, image_count, table_count = pdf_to_markdown(pdf_path, folder_name)
 
-        # Save the Markdown file to S3
+        # ✅ Save the Markdown file to S3
         markdown_name = f"{folder_name}.md"
         markdown_path = os.path.join("markdown", markdown_name)
         os.makedirs(os.path.dirname(markdown_path), exist_ok=True)
         with open(markdown_path, "w") as md_file:
             md_file.write(markdown_content)
 
-        # ✅ Reload .env before S3 upload
-        load_dotenv()
-
+        # ✅ Use the unique folder name for S3 storage
         s3_markdown_key = f"{S3_WEBPAGES_OBJECT}/{folder_name}/{markdown_name}"
         upload_to_s3(markdown_path, s3_markdown_key)
         os.remove(markdown_path)
         
-        # Clean up the downloaded PDF file
+        # ✅ Clean up the downloaded PDF file
         os.remove(pdf_path)
         
         return f"Conversion successful! Extracted {image_count} images and {table_count} tables. Files saved in S3 under '{S3_WEBPAGES_OBJECT}/{folder_name}'."

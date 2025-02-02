@@ -156,6 +156,31 @@ async def process_webpage(url: str, max_pdfs: int = 3):
         if not url.startswith("http"):
             raise HTTPException(status_code=400, detail="Invalid URL. Please provide a valid HTTP/HTTPS URL.")
 
+        # ✅ Extract LXML content
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        tree = html.fromstring(response.content)
+        extracted_text = tree.text_content().strip()
+
+        # ✅ Extract filename from URL and ensure a unique folder is created in S3
+        folder_name = get_folder_name_from_url(url)
+        logger.info(f"Folder name for storage: {folder_name}")
+
+        # ✅ Save LXML extracted content to a local file before uploading
+        lxml_filename = f"{folder_name}_extracted_lxml.txt"
+        lxml_filepath = os.path.join("lxml_extracted", lxml_filename)
+        os.makedirs(os.path.dirname(lxml_filepath), exist_ok=True)
+        
+        with open(lxml_filepath, "w", encoding="utf-8") as f:
+            f.write(extracted_text)
+
+        # ✅ Upload LXML extracted content to S3
+        s3_lxml_key = f"{S3_WEBPAGES_OBJECT}/{folder_name}/{lxml_filename}"
+        upload_to_s3(lxml_filepath, s3_lxml_key)
+        os.remove(lxml_filepath)
+
+        # ✅ Process PDF links
         pdf_links = get_pdf_links(url, max_pdfs=max_pdfs)
         if not pdf_links:
             raise HTTPException(status_code=400, detail="No PDF links found on the webpage.")
@@ -167,18 +192,18 @@ async def process_webpage(url: str, max_pdfs: int = 3):
                     logger.error(f"Skipping conversion for: {pdf_url}")
                     continue
 
-                folder_name = get_folder_name_from_url(pdf_url)
-                logger.info(f"Folder name: {folder_name}")
+                pdf_folder_name = get_folder_name_from_url(pdf_url)
+                logger.info(f"Folder name: {pdf_folder_name}")
 
-                markdown_content, image_count = pdf_to_markdown(pdf_path, folder_name)
+                markdown_content, image_count = pdf_to_markdown(pdf_path, pdf_folder_name)
 
-                markdown_name = f"{folder_name}.md"
+                markdown_name = f"{pdf_folder_name}.md"
                 markdown_path = os.path.join("markdown", markdown_name)
                 os.makedirs(os.path.dirname(markdown_path), exist_ok=True)
                 with open(markdown_path, "w", encoding="utf-8") as md_file:
                     md_file.write(markdown_content)
 
-                s3_markdown_key = f"{S3_WEBPAGES_OBJECT}/{folder_name}/{markdown_name}"
+                s3_markdown_key = f"{S3_WEBPAGES_OBJECT}/{pdf_folder_name}/{markdown_name}"
                 upload_to_s3(markdown_path, s3_markdown_key)
                 os.remove(markdown_path)
                 os.remove(pdf_path)
@@ -188,11 +213,12 @@ async def process_webpage(url: str, max_pdfs: int = 3):
                 logger.error(f"Error processing PDF {pdf_url}: {e}")
                 continue
 
-        return f"Processing successful! Processed {len(pdf_links)} PDFs."
+        return f"Processing successful! Extracted LXML content and processed {len(pdf_links)} PDFs. Data is saved in S3 under '{S3_WEBPAGES_OBJECT}/{folder_name}/'."
 
     except Exception as e:
         logger.error(f"Error in process_webpage: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Run the FastAPI app with:
 # uvicorn script_name:app --reload
