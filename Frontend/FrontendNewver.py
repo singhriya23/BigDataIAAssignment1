@@ -23,7 +23,7 @@ if dropdown == "PyMuPDF":
     uploaded_file = st.sidebar.file_uploader("Upload a PDF file", type=["pdf"], key="pymupdf_uploader")
     if uploaded_file is not None:
         files = {"file": uploaded_file.getvalue()}  
-        response = requests.post(f"{BASE_API_URL}/extract-to-markdown/", files=files)
+        response = requests.post(f"{BASE_API_URL}/extract-pdf/", files=files)
         if response.status_code == 200:
             data = response.json()
             st.write("### Extracted Markdown Content")
