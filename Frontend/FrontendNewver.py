@@ -71,7 +71,7 @@ if dropdown == "PyMuPDF":
                     objects = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=folder_prefix)
 
                     if "Contents" not in objects:
-                        st.error("❌ No files found in S3. Check if the folder exists.")
+                        st.error(" No files found in S3. Check if the folder exists.")
                     else:
                         zip_file_name = f"{file_name}.zip"
                         local_zip_path = f"./{zip_file_name}"
@@ -89,19 +89,19 @@ if dropdown == "PyMuPDF":
                                 zipf.write(local_file_path, arcname=file_name_in_s3)
                                 os.remove(local_file_path)  # Cleanup downloaded files
 
-                        st.success(f"✅ Folder '{file_name}' downloaded successfully!")
+                        st.success(f"Folder '{file_name}' downloaded successfully!")
 
-                        # Offer the ZIP file for download
+                        
                         with open(local_zip_path, "rb") as f:
                             st.download_button(label="Download Folder as ZIP", data=f, file_name=zip_file_name)
 
-                        os.remove(local_zip_path)  # Cleanup ZIP after download
+                        os.remove(local_zip_path)  
 
                 except Exception as e:
-                    st.error(f"❌ Failed to download from S3: {str(e)}")
+                    st.error(f" Failed to download from S3: {str(e)}")
 
         else:
-            st.error("❌ Failed to process the file. Please try again.")
+            st.error(" Failed to process the file. Please try again.")
 
 elif dropdown == "BeautifulSoup":
     st.sidebar.write("Enter the URL of the PDF:")
@@ -112,30 +112,30 @@ elif dropdown == "BeautifulSoup":
 
         if response.status_code == 200:
             try:
-                # ✅ Ensure response is parsed as JSON
+                
                 data = response.json()
                 
-                # ✅ Check if the response is a dictionary before calling `.get()`
+                
                 if isinstance(data, dict):
                     content_preview = data.get("parsed_html", "No extracted content available.")
                 else:
-                    content_preview = str(data)  # ✅ Convert response to string if it's not a dictionary
+                    content_preview = str(data)  
 
                 st.write("### Extracted HTML Content")
                 preview_length = min(1000, len(content_preview))
                 st.text_area("Content Preview", content_preview[:preview_length] + "...", height=300)
 
-                # Extract filename (from URL) for S3 folder retrieval
+                
                 file_name = os.path.splitext(os.path.basename(url))[0]  
 
                 st.write(f"📂 **Processing Folder in S3:** `{S3_BUCKET_NAME}/Webpages/{file_name}/`")  
 
-                # ✅ Generate S3 Download URL for the folder
+                
                 if st.button("Download Full Processed Folder"):
                     folder_prefix = f"Webpages/{file_name}/"
                     
                     try:
-                        # ✅ List all objects inside the folder
+                        
                         objects = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=folder_prefix)
 
                         if "Contents" not in objects:
@@ -144,7 +144,7 @@ elif dropdown == "BeautifulSoup":
                             zip_file_name = f"{file_name}.zip"
                             local_zip_path = f"./{zip_file_name}"
 
-                            # ✅ Download all files and zip them locally
+                            
                             import zipfile
                             with zipfile.ZipFile(local_zip_path, "w") as zipf:
                                 for obj in objects["Contents"]:
@@ -367,7 +367,7 @@ elif dropdown == "MS Docs":
 
 
 
-# ---------------------- Fixing PyTesseract Section ----------------------
+
 
 elif dropdown == "PyTesseract":
     uploaded_file = st.sidebar.file_uploader("Upload an Image (JPG, PNG, TIFF, PDF)", type=["jpg", "png", "tiff", "pdf"], key="pytesseract_uploader")
@@ -378,32 +378,32 @@ elif dropdown == "PyTesseract":
 
         if response.status_code == 200:
             try:
-                data = response.json()  # Ensure response is JSON
+                data = response.json()  
 
                 if isinstance(data, dict):
                     content = data.get("ocr_text", "No extracted text available.")  
                 else:
-                    content = response.text  # If response is not JSON, fallback to plain text
+                    content = response.text  
 
                 st.write("### Extracted OCR Text")
                 preview_length = min(1000, len(content))  
                 st.text_area("OCR Result", content[:preview_length] + "...", height=300)
 
-                # Extract filename (without extension) for S3 folder retrieval
+                
                 file_name = os.path.splitext(uploaded_file.name)[0]  
 
                 st.write(f"📂 **Processing Folder in S3:** `{S3_BUCKET_NAME}/{S3_FOLDER_PATH}/{file_name}/`")  
 
-                # Ensure session state exists
+                
                 if "zip_file_path" not in st.session_state:
                     st.session_state.zip_file_path = None  
 
-                # Generate S3 Download URL for the folder
+                
                 if st.button("Download Full Processed Folder"):
                     folder_prefix = f"{S3_FOLDER_PATH}/{file_name}/"
                     
                     try:
-                        # List all objects inside the folder
+                        
                         objects = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=folder_prefix)
 
                         if "Contents" not in objects:
@@ -412,7 +412,7 @@ elif dropdown == "PyTesseract":
                             zip_file_name = f"{file_name}.zip"
                             local_zip_path = f"./{zip_file_name}"
 
-                            # Download all files and zip them locally
+                            
                             import zipfile
                             with zipfile.ZipFile(local_zip_path, "w") as zipf:
                                 for obj in objects["Contents"]:
@@ -420,22 +420,21 @@ elif dropdown == "PyTesseract":
                                     file_name_in_s3 = key.split("/")[-1]
                                     local_file_path = f"./{file_name_in_s3}"
 
-                                    # Download each file
+                                    
                                     s3_client.download_file(S3_BUCKET_NAME, key, local_file_path)
                                     zipf.write(local_file_path, arcname=file_name_in_s3)
-                                    os.remove(local_file_path)  # Cleanup downloaded files
+                                    os.remove(local_file_path)  
 
                             st.success(f"✅ Folder '{file_name}' downloaded successfully!")
 
                             with open(local_zip_path, "rb") as f:
                              st.download_button(label="Download Folder as ZIP", data=f, file_name=zip_file_name)
 
-                        os.remove(local_zip_path)  # Cleanup ZIP after download
-
+                        os.remove(local_zip_path)  
                     except Exception as e:
                      st.error(f"❌ Failed to download from S3: {str(e)}")
 
-                            # Store ZIP file path in session state
+                           
                      st.session_state.zip_file_path = local_zip_path  
 
             except Exception as e:
@@ -466,26 +465,26 @@ elif dropdown == "MarkItDown":
                 st.write(f"**Markdown File Path:** {markdown_file_path}")
                 st.success("Document converted to Markdown successfully!")
 
-                # Extract filename (without extension) for S3 folder retrieval
+                
                 file_name = os.path.splitext(uploaded_file.name)[0]  
 
                 st.write(f"📂 **Processing Folder in S3:** `{S3_BUCKET_NAME}/{S3_PDF_OBJECT}/{file_name}/`")  
 
-                # Generate S3 Download URL for the folder
+                
                 if st.button("Download Full Processed Folder"):
                     folder_prefix = f"{S3_PDF_OBJECT}/{file_name}/"
                     
                     try:
-                        # List all objects inside the folder
+                        
                         objects = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=folder_prefix)
 
                         if "Contents" not in objects:
-                            st.error("❌ No files found in S3. Check if the folder exists.")
+                            st.error(" No files found in S3. Check if the folder exists.")
                         else:
                             zip_file_name = f"{file_name}.zip"
                             local_zip_path = f"./{zip_file_name}"
 
-                            # Download all files and zip them locally
+                            
                             import zipfile
                             with zipfile.ZipFile(local_zip_path, "w") as zipf:
                                 for obj in objects["Contents"]:
@@ -493,18 +492,18 @@ elif dropdown == "MarkItDown":
                                     file_name_in_s3 = key.split("/")[-1]
                                     local_file_path = f"./{file_name_in_s3}"
 
-                                    # Download each file
+                                    
                                     s3_client.download_file(S3_BUCKET_NAME, key, local_file_path)
                                     zipf.write(local_file_path, arcname=file_name_in_s3)
                                     os.remove(local_file_path)  # Cleanup downloaded files
 
                             st.success(f"✅ Folder '{file_name}' downloaded successfully!")
 
-                            # Offer the ZIP file for download
+                            
                             with open(local_zip_path, "rb") as f:
                                 st.download_button(label="Download Folder as ZIP", data=f, file_name=zip_file_name)
 
-                            os.remove(local_zip_path)  # Cleanup ZIP after download
+                            os.remove(local_zip_path)  
 
                     except Exception as e:
                         st.error(f"❌ Failed to download from S3: {str(e)}")
@@ -517,51 +516,51 @@ elif dropdown == "APIFY":
     url = st.sidebar.text_input("Enter the webpage URL", key="apify_scraper_url")
 
     if url:
-        response = requests.post(f"{BASE_API_URL}/apify-scrape/",data={"url": url})  # ✅ Fix: Send JSON instead of params
+        response = requests.post(f"{BASE_API_URL}/apify-scrape/",dt={"url": url})  # ✅ Fix: Send JSON instead of params
 
         if response.status_code == 200:
             try:
-                # ✅ Ensure response is parsed as JSON
-                data = response.json()
+               
+                dt = response.json()
 
-                # ✅ Check if the response is a dictionary before calling `.get()`
-                if isinstance(data, dict):
-                    scrape_status = data.get("message", "Scraping completed!")
+                
+                if isinstance(dt, dict):
+                    scrape_status = dt.get("message", "Scraping completed!")
                 else:
-                    scrape_status = str(data)  # ✅ Convert response to string if it's not a dictionary
+                    scrape_status = str(dt)  
 
                 st.write("### Scrape Status")
                 preview_length = min(1000, len(scrape_status))
                 st.text_area("Scrape Log", scrape_status[:preview_length] + "...", height=150)
 
-                st.success("✅ Webpage successfully scraped and uploaded to S3!")
+                st.success(" Webpage successfully scraped and uploaded to S3!")
 
             except Exception as e:
-                st.error(f"❌ Error while processing API response: {str(e)}")
+                st.error(f" Error while processing API response: {str(e)}")
 
         else:
-            st.error(f"❌ Failed to scrape the webpage. Server Response: {response.text}")
+            st.error(f" Failed to scrape the webpage. Server Response: {response.text}")
 
-    # ✅ Extract filename (from URL) for S3 folder retrieval
+   
     file_name = os.path.splitext(os.path.basename(url))[0]
 
-    st.write(f"📂 **Processing Folder in S3:** `{S3_BUCKET_NAME}/Webpages/{file_name}/`")  
+    st.write(f"**Processing Folder in S3:** `{S3_BUCKET_NAME}/Webpages/{file_name}/`")  
 
-    # ✅ Ensure the download button is properly structured
+    
     if st.button("Download Scraped Data"):
         folder_prefix = f"Webpages/{file_name}/"
 
         try:
-            # ✅ List all objects inside the correct folder
+            
             objects = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=folder_prefix)
 
             if "Contents" not in objects:
-                st.error("❌ No files found in S3. Check if the folder exists.")
+                st.error(" No files found in S3. Check if the folder exists.")
             else:
                 zip_file_name = f"{file_name}.zip"
                 local_zip_path = f"./{zip_file_name}"
 
-                # ✅ Download all files and zip them locally
+                
                 import zipfile
                 with zipfile.ZipFile(local_zip_path, "w") as zipf:
                     for obj in objects["Contents"]:
@@ -569,18 +568,18 @@ elif dropdown == "APIFY":
                         file_name_in_s3 = key.split("/")[-1]
                         local_file_path = f"./{file_name_in_s3}"
 
-                        # ✅ Download each file from S3
+                        
                         s3_client.download_file(S3_BUCKET_NAME, key, local_file_path)
                         zipf.write(local_file_path, arcname=file_name_in_s3)
                         os.remove(local_file_path)  # ✅ Cleanup downloaded files
 
-                st.success(f"✅ Scraped data for '{file_name}' downloaded successfully!")
+                st.success(f" Scraped data for '{file_name}' downloaded successfully!")
 
-                # ✅ Offer the ZIP file for download
+                
                 with open(local_zip_path, "rb") as f:
                     st.download_button(label="Download Scraped Data as ZIP", data=f, file_name=zip_file_name)
 
-                os.remove(local_zip_path)  # ✅ Cleanup ZIP after download
+                os.remove(local_zip_path)  
 
         except Exception as e:
-            st.error(f"❌ Failed to download from S3: {str(e)}")
+            st.error(f"Failed to download from S3: {str(e)}")
