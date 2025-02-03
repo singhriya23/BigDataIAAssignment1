@@ -1,8 +1,0 @@
-streamlit
-numpy
-pandas
-load_dotenv
-fitz
-frontend
-boto3
-fastapi
