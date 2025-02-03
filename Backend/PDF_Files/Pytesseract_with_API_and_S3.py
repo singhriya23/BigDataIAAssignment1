@@ -19,7 +19,7 @@ async def root():
     return {"message": "Welcome to the PDF Extraction API!"}
 
 
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files-1")
 S3_PDF_OBJECT = "PDF_Files"
 
 

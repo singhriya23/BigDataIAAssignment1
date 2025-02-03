@@ -24,7 +24,7 @@ async def root():
     return {"message": "Welcome to the PDF Extraction API!"}
 
 # ✅ AWS S3 Configuration from .env
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files-1")
 S3_WEBPAGES_OBJECT = "Webpages"
 
 # ✅ Initialize S3 client with credentials from .env

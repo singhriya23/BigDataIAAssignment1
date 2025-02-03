@@ -1,33 +1,30 @@
-import boto3
-import os
-from dotenv import load_dotenv
-
-
-load_dotenv(dotenv_path="env")
-
-def upload_to_s3(file_path: str, s3_key: str):
-    
-    s3 = boto3.client(
-        's3',
-        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-        region_name=os.getenv('AWS_REGION')
-    )
-    
+def upload_to_s3(file_path, s3_key):
+    """
+    Uploads a file to the specified S3 bucket and ensures the folder exists.
+    """
     try:
-        s3.upload_file(
-            Filename=file_path,
-            Bucket=os.getenv('S3_BUCKET_NAME'),
-            Key=s3_key
-        )
-        s3_url = f"s3://{os.getenv('S3_BUCKET_NAME')}/{s3_key}"
-        return s3_url
+        logger.info(f"Uploading {file_path} to S3 with key {s3_key}")
+
+        # ✅ Extract folder path from s3_key
+        folder_prefix = "/".join(s3_key.split("/")[:-1])  # Extract only the folder path
+        
+        if not folder_prefix.endswith("/"):
+            folder_prefix += "/"
+
+        # ✅ Ensure the folder exists by uploading a placeholder file
+        placeholder_key = f"{folder_prefix}placeholder.txt"
+        
+        # ✅ Upload a placeholder file if the folder is new
+        try:
+            s3_client.head_object(Bucket=S3_BUCKET_NAME, Key=placeholder_key)
+            logger.info(f"Folder {folder_prefix} already exists.")
+        except:
+            logger.info(f"Creating folder {folder_prefix} in S3 by adding placeholder.txt.")
+            s3_client.put_object(Bucket=S3_BUCKET_NAME, Key=placeholder_key, Body="Placeholder file to create folder.")
+
+        # ✅ Upload the actual file
+        s3_client.upload_file(file_path, S3_BUCKET_NAME, s3_key)
+        logger.info(f"Uploaded {file_path} to S3 bucket {S3_BUCKET_NAME} with key {s3_key}")
+
     except Exception as e:
-        raise Exception(f"Error uploading file to S3: {e}")
-
-
-if __name__ == "__main__":
-    file_path = "path/to/your/file.txt"
-    s3_key = "your/s3/key/file.txt"
-    s3_url = upload_to_s3(file_path, s3_key)
-    print(f"File uploaded to: {s3_url}")
+        logger.error(f"Error uploading to S3: {e}")

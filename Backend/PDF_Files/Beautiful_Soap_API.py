@@ -12,21 +12,18 @@ import uuid
 from datetime import datetime
 
 def get_folder_name_from_url(pdf_url):
-    """
-    Generate a unique folder name based on the original file name, timestamp, and UUID.
-    This ensures that each upload is stored in a separate folder, even if the file name is the same.
-    """
+ 
     parsed_url = urlparse(pdf_url)
     base_name = os.path.splitext(os.path.basename(parsed_url.path))[0]
 
-    # ✅ Add timestamp and UUID to prevent overwriting previous uploads
+ 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     unique_id = uuid.uuid4().hex[:8]  # Use only first 8 characters for brevity
     unique_folder_name = f"{base_name}_{timestamp}_{unique_id}"
     
     return unique_folder_name
 
-# ✅ Load environment variables from .env file
+
 load_dotenv("env")
 
 # Configure logging
@@ -36,7 +33,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 # ✅ AWS S3 Configuration from .env
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files-1")
 S3_WEBPAGES_OBJECT = "Webpages"
 
 # ✅ Initialize S3 client with credentials from .env

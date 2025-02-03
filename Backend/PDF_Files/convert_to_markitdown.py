@@ -12,7 +12,7 @@ load_dotenv("env")
 
 app = FastAPI()
 
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "document-parsed-files-1")
 S3_CONVERTED_OBJECT = "Converted_Files"
 s3_client = boto3.client(
     "s3",
