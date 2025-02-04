@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 st.title("Welcome to DocGPT API Frontend")
 st.header("Choose a function to process your document")
 
-BASE_API_URL = "http://localhost:8000"
+BASE_API_URL = "https://backend-image-416252648166.us-central1.run.app/"
 S3_BUCKET_NAME = "document-parsed-files-1"
 S3_PDF_OBJECT = "PDF_Files"
 
