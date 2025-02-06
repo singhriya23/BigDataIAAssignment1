@@ -7,7 +7,6 @@ from lxml_API_S3 import *
 from Pymupdf_Updated_with_API_and_S3 import *
 from Pytesseract_with_API_and_S3 import *
 from test_fastapi import *
-from convert_to_docling import *
 from apify_webscraping import *
 
 app = FastAPI()
@@ -35,10 +34,6 @@ async def process_doc_intelligence(file: UploadFile = File(...)):
 async def extract_text_pytesseract(file: UploadFile = File(...)):
     return await extract_ocr(file) 
 
-@app.post("/convert_to_docling_markdown/")
-async def process_docling(file: UploadFile = File(...)):
-    return await convert_file_to_docling_markdown(file)  
-
 @app.post("/convert_to_markdown/")
 async def process_markitdown(file: UploadFile = File(...)):
     return await convert_file_to_markdown(file) 
@@ -46,3 +41,8 @@ async def process_markitdown(file: UploadFile = File(...)):
 @app.post("/apify-scrape/")
 async def process_apify(url: str = Form(...)):
     return await scrape_and_save(url) 
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8080)) 
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=port)
