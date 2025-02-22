@@ -8,6 +8,7 @@ from Pymupdf_Updated_with_API_and_S3 import *
 from Pytesseract_with_API_and_S3 import *
 from test_fastapi import *
 from apify_webscraping import *
+from convert_to_docling import *
 
 app = FastAPI()
 
@@ -37,6 +38,10 @@ async def extract_text_pytesseract(file: UploadFile = File(...)):
 @app.post("/convert_to_markdown/")
 async def process_markitdown(file: UploadFile = File(...)):
     return await convert_file_to_markdown(file) 
+
+@app.post("/convert_to_docling_markdown/")
+async def process_docling(file: UploadFile = File(...)):
+    return await convert_file_to_docling_markdown(file)  
 
 @app.post("/apify-scrape/")
 async def process_apify(url: str = Form(...)):
