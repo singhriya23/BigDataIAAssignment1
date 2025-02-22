@@ -4,7 +4,7 @@ import os
 from apify_client import ApifyClient
 from dotenv import load_dotenv
 from fastapi.responses import PlainTextResponse
-import re  # For regex operations
+from urllib.parse import urlparse
 
 # Load environment variables from .env file
 load_dotenv("env")
@@ -34,14 +34,22 @@ def upload_to_s3(file_path, s3_key):
     except Exception as e:
         print(f"Error uploading to S3: {e}")
 
-# Function to extract folder name from URL (between www.linkedin and com)
+# Improved function to extract a structured folder name from any URL
 def extract_folder_name_from_url(url: str):
-    # Using regex to find the part between 'www.linkedin' and 'com'
-    match = re.search(r"www\.linkedin\.com/([^/]+)", url)
-    if match:
-        return match.group(1)  # Extracted part between www.linkedin and .com
+    """
+    Extracts a meaningful folder name from the URL.
+    Uses the domain name and first path segment to create a structured name.
+    """
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc.replace(".", "_")  # Replace dots to avoid folder issues
+    path_segments = parsed_url.path.strip("/").split("/")
+    
+    if path_segments and path_segments[0]:
+        folder_name = f"{domain}_{path_segments[0]}"  # Take the first meaningful path segment
     else:
-        raise HTTPException(status_code=400, detail="Invalid URL format. Could not extract folder name.")
+        folder_name = domain  # Use domain if no path exists
+
+    return folder_name
 
 @app.get("/")
 async def root():
@@ -60,8 +68,6 @@ async def scrape_and_save(url: str):
             "pageFunction": """async function pageFunction(context) {
                 const $ = context.jQuery;
                 const pageTitle = $('title').first().text();
-                context.log.info(`URL: ${context.request.url}, TITLE: ${pageTitle}`);
-                await context.enqueueRequest({ url: 'http://www.example.com' });
                 return {
                     url: context.request.url,
                     pageTitle,
@@ -70,7 +76,7 @@ async def scrape_and_save(url: str):
         })
 
         # Fetch results and save them to a markdown file
-        markdown_content = "# Scraped Data\n\n## LinkedIn Job Listings\n\n"
+        markdown_content = "# Scraped Data\n\n## Webpage Data\n\n"
 
         for item in client.dataset(run["defaultDatasetId"]).iterate_items():
             markdown_content += f"### URL: {item.get('url', 'No URL found')}\n"
